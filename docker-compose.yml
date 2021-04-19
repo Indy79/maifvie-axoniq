@@ -1,0 +1,11 @@
+version: '3.9'
+services:
+  eventsourcing_axonserver:
+    image: axoniq/axonserver:latest
+    ports:
+      - 8024:8024
+      - 8124:8124
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
