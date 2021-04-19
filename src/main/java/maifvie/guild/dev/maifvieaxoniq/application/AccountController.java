@@ -9,6 +9,7 @@ import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.axonframework.messaging.responsetypes.ResponseTypes;
 import org.axonframework.queryhandling.QueryGateway;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestClientException;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -26,10 +27,20 @@ public class AccountController {
     }
 
     @PostMapping("/create")
-    public void handle(@RequestBody AccountCreationRequest accountCreationRequest) {
-        Optional.ofNullable(accountCreationRequest.getStartingBalance())
-                .map(balance -> commandGateway.send(new CreateAccountCommand(balance)))
-                .orElseGet(() -> commandGateway.send(new CreateAccountCommand()));
+    public CompletableFuture<AccountBalanceView> handle(@RequestBody AccountCreationRequest accountCreationRequest) {
+        return Optional.ofNullable(accountCreationRequest.getStartingBalance())
+                .map(balance -> commandGateway.send(new CreateAccountCommand(balance)).thenApply(o -> {
+                    if (o instanceof UUID) {
+                        return AccountBalanceView.builder().accountId((UUID) o).build();
+                    }
+                    throw new IllegalStateException();
+                }))
+                .orElseGet(() -> commandGateway.send(new CreateAccountCommand()).thenApply(o -> {
+                    if (o instanceof UUID) {
+                        return AccountBalanceView.builder().accountId((UUID) o).build();
+                    }
+                    throw new IllegalStateException();
+                }));
     }
 
     @PostMapping("/accounts/{accountId}/operations")
